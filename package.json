@@ -1,0 +1,17 @@
+{
+  "name": "notebook-seven",
+  "version": "2.0.0",
+  "description": "Browser-native Isolation Forest anomaly detection dashboard for offshore well monitoring",
+  "scripts": {
+    "build": "node build.js",
+    "build:custom": "node build.js --model",
+    "serve": "python3 -m http.server 8080 --directory build",
+    "dev": "node build.js && python3 -m http.server 8080 --directory build"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {}
+}
