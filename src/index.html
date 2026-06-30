@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Notebook Seven · Well Anomaly Monitor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- Drop overlay -->
+<div id="drop"><i class="fas fa-cloud-upload-alt" style="margin-right:.6rem"></i>Drop CSV to stream</div>
+
+<!-- Toast notifications -->
+<div id="toast"></div>
+
+<!-- Floating clouds (decorative) -->
+<div class="cloud c1"></div>
+<div class="cloud c2"></div>
+<div class="cloud c3"></div>
+
+<!-- ── NAV ──────────────────────────────────────────────────────────────── -->
+<nav>
+  <div class="brand">
+    <i class="fas fa-leaf"></i>
+    Notebook Seven
+  </div>
+  <div class="nav-r">
+    <span style="font-size:.63rem;color:var(--text-3);font-weight:600">
+      Well Anomaly Monitor · Isolation Forest
+    </span>
+    <span class="worker-badge" id="workerBadge">worker · idle</span>
+    <div class="chip">
+      <span class="dot" id="gDot"></span>
+      <span id="gSt">ready</span>
+    </div>
+  </div>
+</nav>
+
+<!-- ── MAIN ─────────────────────────────────────────────────────────────── -->
+<main>
+<div class="grid">
+
+  <!-- ── LEFT: SENSORS ────────────────────────────────────────────────── -->
+  <div>
+    <div class="card" style="height:100%">
+      <div class="clabel"><i class="fas fa-satellite-dish"></i>Sensors</div>
+
+      <div class="scol">
+        <div class="scard" id="cp">
+          <div class="stop">
+            <span class="sname">P-TPT</span>
+            <span class="sstate" id="sp">standby</span>
+          </div>
+          <div class="sval"><span id="vp">—</span><span class="u">MPa</span></div>
+          <div class="srange">Tubing pressure · 4.5–6.0 MPa</div>
+        </div>
+
+        <div class="scard" id="ct">
+          <div class="stop">
+            <span class="sname">T-TPT</span>
+            <span class="sstate" id="st">standby</span>
+          </div>
+          <div class="sval"><span id="vt">—</span><span class="u">°C</span></div>
+          <div class="srange">Downhole temp · 65–85 °C</div>
+        </div>
+
+        <div class="scard" id="cm">
+          <div class="stop">
+            <span class="sname">P-MON-CKP</span>
+            <span class="sstate" id="sm">standby</span>
+          </div>
+          <div class="sval"><span id="vm">—</span><span class="u">MPa</span></div>
+          <div class="srange">Choke upstream · 15–21 MPa</div>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div class="mc">
+          <div class="mclabel">Alarms</div>
+          <div class="mcval" id="alarmC">0</div>
+        </div>
+        <div class="mc">
+          <div class="mclabel">Window</div>
+          <div class="mcval" id="bufC">0/180</div>
+        </div>
+        <div class="mc">
+          <div class="mclabel">Inferences</div>
+          <div class="mcval" id="infC">0</div>
+        </div>
+        <div class="mc">
+          <div class="mclabel">Latency</div>
+          <div class="mcval" id="latEl">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CENTER ───────────────────────────────────────────────────────── -->
+  <div class="ccol">
+
+    <!-- Telemetry chart -->
+    <div class="card">
+      <div class="chart-hdr">
+        <div class="clabel" style="margin:0">
+          <i class="fas fa-wave-square"></i>Telemetry · last 180 samples
+        </div>
+        <label class="upbtn">
+          <i class="fas fa-upload"></i>Load &amp; Stream CSV
+          <input type="file" id="csvFile" accept=".csv" hidden/>
+        </label>
+      </div>
+      <div class="chart-wrap"><canvas id="sensorCanvas"></canvas></div>
+      <!-- CSV streaming progress bar -->
+      <div class="stream-progress">
+        <div class="stream-progress-fill" id="streamFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Simulation controls -->
+    <div class="card">
+      <div class="clabel" style="margin-bottom:.55rem">
+        <i class="fas fa-play-circle"></i>Streaming simulation
+      </div>
+      <div class="simrow">
+        <button class="sbtn" id="simN">
+          <i class="fas fa-circle-check"></i>Normal
+        </button>
+        <button class="sbtn red" id="simA">
+          <i class="fas fa-triangle-exclamation"></i>Inject anomaly
+        </button>
+        <button class="sbtn" id="simStop">
+          <i class="fas fa-stop"></i>Stop
+        </button>
+        <span class="stk" id="simTk"></span>
+      </div>
+    </div>
+
+    <!-- Score + threshold -->
+    <div class="card">
+      <div class="srow">
+        <div>
+          <div class="ssub">Anomaly score</div>
+          <div class="snum" id="scoreEl">—</div>
+        </div>
+        <div style="flex:1">
+          <div class="trow">
+            <span class="tlabel">Threshold</span>
+            <input type="range" id="tSlider" min="0.30" max="0.80" step="0.01" value="0.60"/>
+            <span class="tval" id="tVal">0.60</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:.8rem">
+        <div class="banner idle" id="bannerEl">
+          <i class="fas fa-clock"></i>Awaiting data
+        </div>
+      </div>
+      <div style="margin-top:.8rem">
+        <div class="dtxt" id="decEl">
+          Upload a CSV to stream it row-by-row, or use the simulation controls above.
+        </div>
+      </div>
+    </div>
+
+    <!-- Latency benchmark panel -->
+    <div class="card">
+      <div class="clabel" style="margin-bottom:.55rem">
+        <i class="fas fa-stopwatch"></i>Inference latency benchmark
+        <button class="sbtn" id="benchBtn" style="margin-left:auto;font-size:.58rem;padding:.22rem .7rem">
+          <i class="fas fa-flask"></i>Run 1000×
+        </button>
+      </div>
+      <div class="bench-grid">
+        <div class="bench-cell">
+          <div class="bench-cell-label">Mean</div>
+          <div class="bench-cell-val" id="bMean">—</div>
+        </div>
+        <div class="bench-cell">
+          <div class="bench-cell-label">Median</div>
+          <div class="bench-cell-val" id="bMedian">—</div>
+        </div>
+        <div class="bench-cell">
+          <div class="bench-cell-label">p95</div>
+          <div class="bench-cell-val" id="bP95">—</div>
+        </div>
+        <div class="bench-cell">
+          <div class="bench-cell-label">p99</div>
+          <div class="bench-cell-val" id="bP99">—</div>
+        </div>
+      </div>
+      <p style="font-size:.58rem;color:var(--text-3);margin-top:.55rem;line-height:1.5">
+        Runs 1 000 inferences on the current window using <code>performance.now()</code>
+        (sub-millisecond precision). Results feed directly into your thesis latency table.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT: LOG + FEATURES ────────────────────────────────────────── -->
+  <div class="rcol">
+
+    <div class="card" style="flex:1">
+      <div class="clabel"><i class="fas fa-scroll"></i>Event log</div>
+      <div class="logscroll" id="logEl"></div>
+    </div>
+
+    <div class="card">
+      <div class="clabel">
+        <i class="fas fa-chart-bar"></i>Feature deviation (z-score)
+      </div>
+      <div class="fwrap"><canvas id="featCanvas"></canvas></div>
+    </div>
+
+    <div class="arow">
+      <button class="gbtn" id="clearBtn">Clear log</button>
+      <button class="gbtn dl" id="dlBtn">
+        <i class="fas fa-download"></i> Export CSV
+      </button>
+      <button class="gbtn p" id="ackBtn" disabled>Acknowledge</button>
+    </div>
+
+  </div>
+</div>
+</main>
+
+<footer>
+  Notebook Seven &nbsp;·&nbsp;
+  Isolation Forest · 200 trees · 15 features &nbsp;·&nbsp;
+  Web Worker inference &nbsp;·&nbsp;
+  offline — no data leaves your device &nbsp;·&nbsp; ✿
+</footer>
+
+<!-- External libs -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<!-- Built bundle (model + worker URL + app) injected by build.js -->
+<script src="bundle.js"></script>
+
+</body>
+</html>
